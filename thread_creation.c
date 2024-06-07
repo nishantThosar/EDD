@@ -3,9 +3,16 @@
   the even threads are getting the delay (number) which is assigned to eve_sleep var and the 
   odd threads are getting the delay which value is assigned to odd_sleep.
   Default case: if no inputs are given during the insmod then the threads will sleep at 1 seconds by default
+
+Name : Ashish Bansal
+Place CDAC
+Date: 7 June 2024 (Friday)
+
 */
 
-#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
+
+
+#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt //// just to print the kernel module name
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -47,11 +54,10 @@ int thread_func(void *pv)
 	
 	while(!kthread_should_stop())
 	{	
-		msleep(info.sleep);
-		pr_info("Slept %d %d\n", info.sleep, info.num);
+		msleep(info.sleep); //milli function to sleep 
+		pr_info("Slept %d %d\n", info.sleep, info.num); // to print how much time the thread slept
 	}
 	pr_info("Exiting Thread %d\n", info.num);
-//	do_exit(0);
 	return 0;
 }
 
@@ -59,15 +65,16 @@ static int __init my_mod_init(void)
 {
 	int  i=0;
 	pr_info("Hello world from %s!\n", KBUILD_MODNAME);
-	
+
+	// to create 6 threads
 	for(i = 0; i<MAX_THREADS; ++i)
 	{
-		sprintf(thread_name, "%s%d", "Thread", i+1);	
-		info[i].num = i;
+		sprintf(thread_name, "%s%d", "Thread", i+1); 
+		info[i].num = i; //to get the even or odd of therad
 		info[i].sleep = i%2 ? odd_sleep: eve_sleep;//if the thread is odd then odd sleep will be assigned & vice versa
 		thread[i] = kthread_run(thread_func, (void*)&info[i], thread_name); // to create and run the threads
 		if (thread[i])
-			pr_info("Thread %s created!\n", thread_name);
+			pr_info("Thread %s created!\n", thread_name); // to print number of threads created
 		else
 		{
 			pr_err("Cannot create thread %s\n", thread_name);
