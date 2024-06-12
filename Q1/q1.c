@@ -12,48 +12,95 @@ The LKM should then create num_devs devices of the form:
 Test the LKM thoroughly by loading and unloading 4-5 times, and make sure the kernel remains stable. LKM should clean up all resources it consumes on unload. 
 */
 
-#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/fs.h>
-/*============================================MACROS============================================================*/
-#define MY_DEV_NAME	"EDD"
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("EDD ");
-MODULE_DESCRIPTION("LKM that creates character devices!");
-MODULE_PARM_DESC(myint, "This is an integer variable");
-/*=========================================GLOBAL DECLARATIONS==================================================*/
-static char string[] = "\tMy module"; // just module name
-static int my_var = 1; // var for model_param
-dev_t dev = 0; // var to hold major & minor value
-module_param(my_var,	int, S_IRUGO | S_IWUSR);//for accepting input
-/*============================================INIT FUNCTION=====================================================*/
-static int __init MAIN(void)
+#define pr_fmt(fmt) KBUILD_MODNAME" : "fmt
+
+#include<linux/init.h>
+#include<linux/module.h>
+#include<linux/fs.h>
+#include<linux/err.h>
+#include<linux/device.h>
+#include<linux/kdev_t.h>
+
+/*-------------------------------------------------------GLOBAL DECLARAIONS---------------------------------------------------------------*/
+int dev_number = 1;
+char *cls_name  = "Default";
+char *device_name = "Def_cls";
+dev_t dev = 0;
+struct class *class;
+struct device *devices[20]; // hardcoded the device array else need to do kmalloc
+
+/*-------------------------------------------------------MODULE PARAM'S---------------------------------------------------------------*/
+module_param(cls_name, charp, S_IRUSR | S_IWUSR);
+module_param(dev_number, int, S_IRUSR | S_IWUSR);
+module_param(device_name,charp, S_IRUSR | S_IWUSR);
+MODULE_PARM_DESC(cls_name, "This is a char variable for class name");
+MODULE_PARM_DESC(device_name, "This is a char variable for device name");
+MODULE_PARM_DESC(dev_number, "This is a int variable for number of devices");
+
+/*-------------------------------------------------------INIT FUNCTION---------------------------------------------------------------*/
+static int __init Init(void)
 {
-	int ans; // for catching the return value of alloc chardev region
-	pr_cont("Hello from %s!\n", string);
-	ans = alloc_chrdev_region(&dev, 0, 1, MY_DEV_NAME);
-	if (ans<0)
+	int i;
+	char _name[10];	
+	pr_info("Initializing Devices\n\n");
+	if(dev_number == 0) // if user inserts dev_number = 0
 	{
-		pr_alert("Error in major:minor allotment!\n");
+		pr_alert("Devices Can't be zero\n");
 		return -1;
 	}//if ends
+	else
+	pr_emerg("\nNow only single device will be created in the class"); // printing if user didn't gave any input for dev_number
 
-	pr_info("\tMajor:%d Minor:%d allotted!\n", MAJOR(dev),MINOR(dev));
-	pr_info("\td Value:%d\n", my_var);
+	if( alloc_chrdev_region(&dev, 0, dev_number, device_name) < 0) //allocating major and minor dynamically
+	{
+		pr_err("Character Device Error\n");
+		return -1;
+	}//if ends
+	pr_info("Character Devices Created %d \n", MAJOR(dev));
+
+	class = class_create(THIS_MODULE, cls_name); // creating the class
+	if(IS_ERR(class))
+	{
+		pr_err("Class Error\n");
+		goto class_error;
+	}//if ends
+	pr_notice("Class created\n"); // debugger
+	//creation of devices as given by user
+	for(i=0; i<dev_number; ++i)
+	{
+		dev = MKDEV(MAJOR(dev), i); // making the device
+		sprintf(_name, "%s%d", device_name, i);
+		devices[i] = device_create(class, NULL, dev, NULL, _name); 
+		if(IS_ERR(devices[i]))
+		{
+			pr_err("Device Error %d\n", i);
+			goto device_error;
+		}
+		pr_emerg("Major = %d | Minor = %d\n", MAJOR(dev), MINOR(dev));//printing the major and minor
+	}
+	pr_cont("Total Devices Created = %d\n", dev_number); // to print the total number of devices created
 	return 0;
-}//__inint ends
+//======================================================== ERROR LADDER =================================================
+	device_error:
+		class_destroy(class);
+	class_error:
+		unregister_chrdev_region(dev, 5);
+	return -1;
+}
 
-/*==========================================EXIT FUNCTION=======================================================*/
-static void __exit EXIT(void)
+/*-------------------------------------------------------EXIT FUNCTION---------------------------------------------------------------*/
+static void __exit Exit(void)
 {
+	int i;//local var
+	for(i = 0; i< dev_number; ++i)
+	{
+		dev = MKDEV(MAJOR(dev), i);
+		device_destroy(class, dev);
+	}
+	class_destroy(class);
+	unregister_chrdev_region(dev, dev_number);
+	pr_warn("Exiting from module\n");
+}
 
-	unregister_chrdev_region(dev, 1);
-	pr_info("major:%d minor:%d numbers freed up...\n",MAJOR(dev),MINOR(dev));
-	pr_alert("Goodbye world!\n");
-	return;
-}//__exit ends
-
-module_init(MAIN);
-module_exit(EXIT);
-
+module_init(Init);
+module_exit(Exit);
