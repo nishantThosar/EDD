@@ -19,9 +19,10 @@ The module should load and unload cleanly without leaving any leaks or zombie th
 #include <linux/kthread.h>
 // #define MAX_THREADS	(6) //for max number of threads
 /*--------------------------------------FUNC PROTOTYPES------------------------------------------------*/
-// int __init my_mod_entry(void);
-// void __exit my_mod_exit(void);
-
+static int __init my_mod_entry(void);
+module_init(my_mod_entry);
+static void __exit my_mod_exit(void);
+module_exit(my_mod_exit);
 int thread_func(void *pv);
 
 //-------------------------------------- STRUCT FOR THREAD INFO ------------------------------------------
@@ -116,9 +117,6 @@ int thread_func(void *pv)
 	return 0;
 }//thread_func ends
 /*_______________________________________________________ END _________________________________________________________*/
-
-module_init(my_mod_entry);
-module_exit(my_mod_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("EDD <edd@cdac.gov.in>");
