@@ -1,15 +1,18 @@
 /*USB driver vsrrsion 1*/
+#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt //just to print the module name in dmesg
+
 #include <linux/module.h>
-#include <linux/inti.h>
+#include <linux/init.h>
 #include <linux/usb.h>
 
-#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt //just to print the module name in dmesg
+
 
 /*Driver Info*/
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Nishant Thosar");
 MODULE_DESCRIPTION("Driver for usb stick");
 
+//For HP pendrive
 #define VEND_ID 0x03f0 
 #define PROD_ID 0x2003
 
@@ -26,13 +29,13 @@ static int my_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	pr_alert("Probe function called\n");
 	return 0;
 }
-static int my_disconnect(struct usb_interface *intf)
+static void my_disconnect(struct usb_interface *intf)
 {
 	pr_alert("Discoonnect function called\n");
-	return 0;
+	return ;
 }
 
-stati struct usb_driver my_driver = {
+static struct usb_driver my_usb_driver = {
 	.name       = "My_usb_driver",
 	.id_table   = my_table,
 	.probe      = my_probe,
